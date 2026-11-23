@@ -1,15 +1,28 @@
 package br.infnet.infnetflix.model;
 
+import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 public record Temporada(int id, int numero, List<Episodio> episodios) {
     public Temporada {
-        if (numero <= 0 || episodios.isEmpty()
-                || episodios.stream().anyMatch(e -> e.temporada() != numero)
-                || episodios.stream().map(Episodio::numero).distinct().count() != episodios.size()) {
+        if (numero <= 0 || episodios.isEmpty()) {
             throw new IllegalArgumentException("Temporada inválida.");
         }
-        episodios = episodios.stream().sorted(Comparator.comparingInt(Episodio::numero)).toList();
+        Set<Integer> numeros = new HashSet<>();
+        for (Episodio episodio : episodios) {
+            if (episodio.temporada() != numero) {
+                throw new IllegalArgumentException("Temporada inválida.");
+            }
+            numeros.add(episodio.numero());
+        }
+        if (numeros.size() != episodios.size()) {
+            throw new IllegalArgumentException("Temporada inválida.");
+        }
+        List<Episodio> ordenados = new ArrayList<>(episodios);
+        ordenados.sort(Comparator.comparingInt(Episodio::numero));
+        episodios = List.copyOf(ordenados);
     }
 }

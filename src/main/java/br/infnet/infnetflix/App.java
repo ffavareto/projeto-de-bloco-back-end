@@ -1,7 +1,10 @@
 package br.infnet.infnetflix;
 
 import br.infnet.infnetflix.controller.InfnetflixController;
-import br.infnet.infnetflix.repository.*;
+import br.infnet.infnetflix.repository.CatalogoRepository;
+import br.infnet.infnetflix.repository.ContaRepository;
+import br.infnet.infnetflix.repository.Database;
+import br.infnet.infnetflix.repository.VisualizacaoRepository;
 import br.infnet.infnetflix.view.ConsoleView;
 
 import java.util.logging.Level;
@@ -16,12 +19,12 @@ public final class App {
     public static void main(String[] args) {
         String arquivo = args.length > 0 ? args[0] : "infnetflix.db";
         try (Database db = new Database("jdbc:sqlite:" + arquivo)) {
-            var controller =
-                    new InfnetflixController(
-                            new ContaRepository(db),
-                            new CatalogoRepository(db),
-                            new VisualizacaoRepository(db));
-            new ConsoleView(controller).iniciar();
+            ContaRepository contas = new ContaRepository(db);
+            CatalogoRepository catalogo = new CatalogoRepository(db);
+            VisualizacaoRepository visualizacoes = new VisualizacaoRepository(db);
+            InfnetflixController controller = new InfnetflixController(contas, catalogo, visualizacoes);
+            ConsoleView console = new ConsoleView(controller);
+            console.iniciar();
         } catch (Exception e) {
             LOG.log(Level.SEVERE, "Não foi possível executar o sistema", e);
         }

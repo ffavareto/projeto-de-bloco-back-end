@@ -16,20 +16,34 @@ public final class Serie extends Conteudo {
 
     @Override
     public Reproduzivel obterItem(int episodioId) {
-        return listarEpisodios().stream().filter(e -> e.id() == episodioId).findFirst()
-                .orElseThrow(() -> new IllegalArgumentException("Episódio não pertence a esta série."));
+        for (Episodio episodio : listarEpisodios()) {
+            if (episodio.id() == episodioId) {
+                return episodio;
+            }
+        }
+        throw new IllegalArgumentException("Episódio não pertence a esta série.");
     }
 
     public void adicionarTemporada(Temporada temporada) {
-        if (temporadas.stream().anyMatch(t -> t.numero() == temporada.numero())
-                || temporada.episodios().stream().anyMatch(e -> e.conteudo().id() != id())) {
-            throw new IllegalArgumentException("Temporada duplicada ou de outra série.");
+        for (Temporada existente : temporadas) {
+            if (existente.numero() == temporada.numero()) {
+                throw new IllegalArgumentException("Temporada duplicada ou de outra série.");
+            }
+        }
+        for (Episodio episodio : temporada.episodios()) {
+            if (episodio.conteudo().id() != id()) {
+                throw new IllegalArgumentException("Temporada duplicada ou de outra série.");
+            }
         }
         temporadas.add(temporada);
         temporadas.sort(Comparator.comparingInt(Temporada::numero));
     }
 
     public List<Episodio> listarEpisodios() {
-        return temporadas.stream().flatMap(t -> t.episodios().stream()).toList();
+        List<Episodio> episodios = new ArrayList<>();
+        for (Temporada temporada : temporadas) {
+            episodios.addAll(temporada.episodios());
+        }
+        return List.copyOf(episodios);
     }
 }

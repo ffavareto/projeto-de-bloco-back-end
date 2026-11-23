@@ -8,8 +8,9 @@ public final class Textos {
     private Textos() {}
 
     public static String normalizar(String texto) {
-        return Normalizer.normalize(texto, Normalizer.Form.NFD)
-                .replaceAll("\\p{M}+", "").toLowerCase(Locale.ROOT);
+        String decomposto = Normalizer.normalize(texto, Normalizer.Form.NFD);
+        String semAcentos = decomposto.replaceAll("\\p{M}+", "");
+        return semAcentos.toLowerCase(Locale.ROOT);
     }
 
     public static boolean contem(String texto, String termo) {

@@ -2,48 +2,51 @@ package br.infnet.infnetflix.model;
 
 /** Sessão de reprodução simulada, com retomada e limite acumulado do plano gratuito. */
 public final class Reproducao {
-    private final int conteudoId;
-    private final int episodioId;
-    private final int duracao;
-    private final Plano plano;
+    private final Reproduzivel item;
+    private final Perfil perfil;
+    private final boolean premium;
     private int progresso;
-    private int avancados;
+    private int segundosRestantes;
     private boolean pausada;
-    private Reproduzivel item;
-    private Perfil perfil;
 
-    /** Representação dos dados enviados à interface; o controlador sempre os revalida. */
-    public Reproducao(int conteudoId, int episodioId, int duracao, int progresso, boolean premium) {
-        this.conteudoId = conteudoId;
-        this.episodioId = episodioId;
-        this.duracao = duracao;
-        this.progresso = progresso;
-        this.plano = new Plano(0, premium ? TipoPlano.PREMIUM : TipoPlano.GRATUITO);
-    }
-
-    static Reproducao iniciar(Reproduzivel item, Perfil perfil) {
+    private Reproducao(Reproduzivel item, Perfil perfil) {
         perfil.exigirConteudoPermitido(item.conteudo());
         Visualizacao anterior = perfil.obterVisualizacao(item);
-        Reproducao r = new Reproducao(item.conteudo().id(), item.episodioId(), item.duracao(),
-                anterior == null ? 0 : anterior.progresso(), !perfil.plano().exibeAnuncios());
-        r.item = item;
-        r.perfil = perfil;
-        return r;
+        this.item = item;
+        this.perfil = perfil;
+        Plano plano = perfil.plano();
+        this.premium = !plano.exibeAnuncios();
+        this.segundosRestantes = plano.limiteSegundos();
+        this.progresso = anterior == null ? 0 : anterior.progresso();
     }
 
-    public int conteudoId() { return conteudoId; }
-    public int episodioId() { return episodioId; }
-    public int duracao() { return duracao; }
+    static Reproducao iniciar(Reproduzivel item, Perfil perfil, Reproducao atual) {
+        if (atual != null && !atual.pausada) {
+            atual.pausar();
+        }
+        return new Reproducao(item, perfil);
+    }
+
+    static void pausarAtual(Reproducao atual) {
+        if (atual == null) {
+            throw new IllegalStateException("Inicie a reprodução primeiro.");
+        }
+        atual.pausar();
+    }
+
+    public int duracao() { return item.duracao(); }
     public int progresso() { return progresso; }
-    public boolean premium() { return !plano.exibeAnuncios(); }
-    public boolean pausada() { return pausada; }
+    public boolean premium() { return premium; }
 
     public int limite(int inicio) {
-        return Math.min(duracao - inicio, premium() ? duracao : plano.limiteSegundos() - avancados);
+        int segundosAteOFim = duracao() - inicio;
+        return Math.min(segundosAteOFim, segundosRestantes);
     }
 
     private void exigirAtiva() {
-        if (item == null || pausada) throw new IllegalStateException("Inicie a reprodução primeiro.");
+        if (pausada) {
+            throw new IllegalStateException("A reprodução já foi pausada.");
+        }
     }
 
     public void reiniciar() {
@@ -57,12 +60,15 @@ public final class Reproducao {
             throw new IllegalArgumentException("O avanço está fora do intervalo permitido.");
         }
         progresso += segundos;
-        if (!premium()) avancados += segundos;
+        if (!premium) {
+            segundosRestantes -= segundos;
+        }
     }
 
-    public void pausar() {
+    public Visualizacao pausar() {
         exigirAtiva();
-        perfil.registrarVisualizacao(item, progresso);
+        Visualizacao visualizacao = perfil.registrarVisualizacao(item, progresso);
         pausada = true;
+        return visualizacao;
     }
 }

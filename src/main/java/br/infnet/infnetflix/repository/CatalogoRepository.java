@@ -5,50 +5,61 @@ import java.sql.*;
 import java.time.LocalDate;
 import java.util.*;
 
-public final class CatalogoRepository extends Repositorio {
+public final class CatalogoRepository {
     private static final String CONTEUDOS = """
             SELECT c.*, g.id AS genero_id
             FROM conteudos c JOIN generos g ON g.nome = c.genero
             """;
+    private final Database db;
 
-    public CatalogoRepository(Database db) { super(db); }
+    public CatalogoRepository(Database db) {
+        this.db = db;
+    }
 
     private Conteudo conteudo(ResultSet r) throws SQLException {
         Genero genero = new Genero(r.getInt("genero_id"), r.getString("genero"));
-        return switch (r.getString("tipo")) {
-            case "FILME" -> new Filme(r.getInt("id"), r.getString("titulo"), genero,
-                    r.getString("classificacao"), r.getString("sinopse"), r.getInt("duracao"));
-            case "SERIE" -> {
+        switch (r.getString("tipo")) {
+            case "FILME":
+                return new Filme(r.getInt("id"), r.getString("titulo"), genero,
+                        r.getString("classificacao"), r.getString("sinopse"), r.getInt("duracao"));
+            case "SERIE":
                 Serie serie = new Serie(r.getInt("id"), r.getString("titulo"), genero,
                         r.getString("classificacao"), r.getString("sinopse"));
                 carregarTemporadas(serie);
-                yield serie;
-            }
-            default -> throw new SQLException("Tipo de conteúdo desconhecido.");
-        };
+                return serie;
+            default:
+                throw new SQLException("Tipo de conteúdo desconhecido.");
+        }
     }
 
-    public Catalogo carregar() throws SQLException { return new Catalogo(listar()); }
+    public Catalogo carregar() throws SQLException {
+        return new Catalogo(listar());
+    }
 
     public List<Conteudo> listar() throws SQLException {
         List<Conteudo> itens = new ArrayList<>();
-        try (PreparedStatement p = preparar(CONTEUDOS + " ORDER BY c.id");
+        try (PreparedStatement p = db.preparar(CONTEUDOS + " ORDER BY c.id");
                 ResultSet r = p.executeQuery()) {
-            while (r.next()) itens.add(conteudo(r));
+            while (r.next()) {
+                itens.add(conteudo(r));
+            }
         }
         return itens;
     }
 
     public Optional<Conteudo> buscarPorId(int id) throws SQLException {
-        try (PreparedStatement p = preparar(CONTEUDOS + " WHERE c.id=?", id);
+        try (PreparedStatement p = db.preparar(CONTEUDOS + " WHERE c.id=?", id);
                 ResultSet r = p.executeQuery()) {
-            return r.next() ? Optional.of(conteudo(r)) : Optional.empty();
+            if (r.next()) {
+                return Optional.of(conteudo(r));
+            }
+            return Optional.empty();
         }
     }
 
     private void carregarTemporadas(Serie serie) throws SQLException {
-        Map<Integer, List<Episodio>> temporadas = new LinkedHashMap<>();
-        try (PreparedStatement p = preparar("""
+        Map<Integer, List<Episodio>> episodiosPorTemporada = new LinkedHashMap<>();
+        try (PreparedStatement p = db.preparar("""
                 SELECT e.*, t.id AS temporada_id
                 FROM episodios e JOIN temporadas t
                   ON t.conteudo_id=e.conteudo_id AND t.numero=e.temporada
@@ -56,18 +67,29 @@ public final class CatalogoRepository extends Repositorio {
                 """, serie.id());
                 ResultSet r = p.executeQuery()) {
             while (r.next()) {
-                temporadas.computeIfAbsent(r.getInt("temporada_id"), id -> new ArrayList<>())
-                        .add(new Episodio(r.getInt("id"), serie, r.getInt("temporada"),
-                                r.getInt("numero"), r.getString("titulo"), r.getInt("duracao")));
+                int temporadaId = r.getInt("temporada_id");
+                List<Episodio> episodios = episodiosPorTemporada.get(temporadaId);
+                if (episodios == null) {
+                    episodios = new ArrayList<>();
+                    episodiosPorTemporada.put(temporadaId, episodios);
+                }
+
+                Episodio episodio = new Episodio(r.getInt("id"), serie, r.getInt("temporada"),
+                        r.getInt("numero"), r.getString("titulo"), r.getInt("duracao"));
+                episodios.add(episodio);
             }
         }
-        temporadas.forEach((id, episodios) ->
-                serie.adicionarTemporada(new Temporada(id, episodios.get(0).temporada(), episodios)));
+
+        for (int temporadaId : episodiosPorTemporada.keySet()) {
+            List<Episodio> episodios = episodiosPorTemporada.get(temporadaId);
+            int numero = episodios.get(0).temporada();
+            serie.adicionarTemporada(new Temporada(temporadaId, numero, episodios));
+        }
     }
 
     public List<Favorito> favoritos(int perfilId) throws SQLException {
         List<Favorito> favoritos = new ArrayList<>();
-        try (PreparedStatement p = preparar("""
+        try (PreparedStatement p = db.preparar("""
                 SELECT c.*, g.id AS genero_id, f.rowid AS favorito_id, f.criado_em
                 FROM favoritos f JOIN conteudos c ON c.id=f.conteudo_id
                 JOIN generos g ON g.nome=c.genero
@@ -75,24 +97,26 @@ public final class CatalogoRepository extends Repositorio {
                 """, perfilId);
                 ResultSet r = p.executeQuery()) {
             while (r.next()) {
-                favoritos.add(new Favorito(r.getInt("favorito_id"), conteudo(r),
-                        LocalDate.parse(r.getString("criado_em").substring(0, 10))));
+                int id = r.getInt("favorito_id");
+                Conteudo conteudoFavoritado = conteudo(r);
+                LocalDate data = LocalDate.parse(r.getString("criado_em").substring(0, 10));
+                favoritos.add(new Favorito(id, conteudoFavoritado, data));
             }
         }
         return favoritos;
     }
 
     public boolean adicionarFavorito(int perfilId, int conteudoId) throws SQLException {
-        return executar("INSERT OR IGNORE INTO favoritos(perfil_id,conteudo_id) VALUES(?,?)",
+        return db.executar("INSERT OR IGNORE INTO favoritos(perfil_id,conteudo_id) VALUES(?,?)",
                 perfilId, conteudoId) > 0;
     }
 
     public boolean removerFavorito(int perfilId, int conteudoId) throws SQLException {
-        return executar("DELETE FROM favoritos WHERE perfil_id=? AND conteudo_id=?", perfilId, conteudoId) > 0;
+        return db.executar("DELETE FROM favoritos WHERE perfil_id=? AND conteudo_id=?", perfilId, conteudoId) > 0;
     }
 
     public boolean editarFavorito(int perfilId, int conteudoId, int novoConteudoId) throws SQLException {
-        return executar("UPDATE favoritos SET conteudo_id=? WHERE perfil_id=? AND conteudo_id=?",
+        return db.executar("UPDATE favoritos SET conteudo_id=? WHERE perfil_id=? AND conteudo_id=?",
                 novoConteudoId, perfilId, conteudoId) > 0;
     }
 }

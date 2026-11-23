@@ -1,8 +1,14 @@
 package br.infnet.infnetflix.model;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.Period;
-import java.util.*;
+import java.time.ZoneOffset;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Objects;
 
 public final class Perfil {
     private final int id;
@@ -40,58 +46,87 @@ public final class Perfil {
         if (!podeAssistir(conteudo)) throw new IllegalArgumentException("Conteúdo não encontrado.");
     }
 
-    public void restaurarDados(List<Favorito> favoritos, List<Visualizacao> historico) {
+    public void restaurarFavoritos(List<Favorito> favoritos) {
         this.favoritos.clear();
         this.favoritos.addAll(favoritos);
+    }
+
+    public void restaurarHistorico(List<Visualizacao> historico) {
         this.historico.clear();
         this.historico.addAll(historico);
     }
 
     public boolean adicionarFavorito(Conteudo conteudo) {
         exigirConteudoPermitido(conteudo);
-        if (favoritos.stream().anyMatch(f -> f.conteudo().id() == conteudo.id())) return false;
+        if (indiceFavorito(conteudo.id()) >= 0) {
+            return false;
+        }
         favoritos.add(new Favorito(0, conteudo, LocalDate.now()));
         return true;
     }
 
     public boolean removerFavorito(int conteudoId) {
-        return favoritos.removeIf(f -> f.conteudo().id() == conteudoId);
+        return favoritos.removeIf(favorito -> favorito.conteudo().id() == conteudoId);
     }
 
     /** Editar a lista significa substituir um título mantendo a posição/data do favorito. */
     public boolean editarFavorito(int conteudoId, Conteudo novoConteudo) {
         exigirConteudoPermitido(novoConteudo);
-        Favorito original = favoritos.stream().filter(f -> f.conteudo().id() == conteudoId)
-                .findFirst().orElse(null);
-        if (original == null) return false;
-        if (conteudoId != novoConteudo.id()
-                && favoritos.stream().anyMatch(f -> f.conteudo().id() == novoConteudo.id())) {
+        int indice = indiceFavorito(conteudoId);
+        if (indice < 0) {
+            return false;
+        }
+        if (conteudoId != novoConteudo.id() && indiceFavorito(novoConteudo.id()) >= 0) {
             throw new IllegalArgumentException("O novo conteúdo já está nos favoritos.");
         }
-        favoritos.set(favoritos.indexOf(original),
-                new Favorito(original.id(), novoConteudo, original.dataAdicao()));
+        Favorito original = favoritos.get(indice);
+        favoritos.set(indice, new Favorito(original.id(), novoConteudo, original.dataAdicao()));
         return true;
     }
 
+    private int indiceFavorito(int conteudoId) {
+        for (int indice = 0; indice < favoritos.size(); indice++) {
+            if (favoritos.get(indice).conteudo().id() == conteudoId) {
+                return indice;
+            }
+        }
+        return -1;
+    }
+
     public List<Favorito> listarFavoritos() {
-        return favoritos.stream().filter(f -> podeAssistir(f.conteudo())).toList();
+        List<Favorito> permitidos = new ArrayList<>();
+        for (Favorito favorito : favoritos) {
+            if (podeAssistir(favorito.conteudo())) {
+                permitidos.add(favorito);
+            }
+        }
+        return List.copyOf(permitidos);
     }
 
     public Visualizacao obterVisualizacao(Reproduzivel item) {
-        return historico.stream().filter(v -> v.correspondeA(item)).findFirst().orElse(null);
+        for (Visualizacao visualizacao : historico) {
+            if (visualizacao.correspondeA(item)) {
+                return visualizacao;
+            }
+        }
+        return null;
     }
 
-    public void registrarVisualizacao(Reproduzivel item, int progressoSegundos) {
+    public Visualizacao registrarVisualizacao(Reproduzivel item, int progressoSegundos) {
         exigirConteudoPermitido(item.conteudo());
         Visualizacao visualizacao = obterVisualizacao(item);
         if (visualizacao == null) {
-            historico.add(new Visualizacao(0, item, progressoSegundos, java.time.LocalDateTime.now(java.time.ZoneOffset.UTC)));
+            visualizacao = new Visualizacao(0, item, progressoSegundos, LocalDateTime.now(ZoneOffset.UTC));
+            historico.add(visualizacao);
         } else {
             visualizacao.atualizarProgresso(progressoSegundos);
         }
+        return visualizacao;
     }
 
     public List<Visualizacao> listarHistorico() {
-        return historico.stream().sorted(Comparator.comparing(Visualizacao::dataUltimoAcesso).reversed()).toList();
+        List<Visualizacao> ordenado = new ArrayList<>(historico);
+        ordenado.sort(Comparator.comparing(Visualizacao::dataUltimoAcesso).reversed());
+        return Collections.unmodifiableList(ordenado);
     }
 }

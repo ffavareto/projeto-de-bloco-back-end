@@ -48,16 +48,15 @@ class ControllerTest {
             c.entrar("ana@example.com", "senha123");
             c.selecionarPerfil(c.perfis().get(0).id());
             assertThrows(IllegalArgumentException.class, () -> c.prepararReproducao(3, 3));
-            Reproducao r = c.prepararReproducao(3, 1);
             assertThrows(
-                    IllegalArgumentException.class, () -> c.registrarReproducao(r, false, 1201));
-            assertEquals(600, c.registrarReproducao(r, false, 600));
+                    IllegalArgumentException.class, () -> c.registrarReproducao(3, 1, false, 1201));
+            assertEquals(600, c.registrarReproducao(3, 1, false, 600));
             assertEquals(600, c.prepararReproducao(3, 1).progresso());
             assertEquals("Origens", c.historico().get(0).episodio());
             assertEquals(0, c.prepararReproducao(3, 2).progresso());
             assertTrue(c.recomendacoes().stream().noneMatch(item -> item.id() == 3));
             c.ativarPremium();
-            assertEquals(1800, c.registrarReproducao(c.prepararReproducao(3, 1), true, 1800));
+            assertEquals(1800, c.registrarReproducao(3, 1, true, 1800));
         }
     }
 
@@ -96,7 +95,7 @@ class ControllerTest {
             assertEquals(java.util.Set.of(3, 5), c.buscar(todos).stream().map(Conteudo::id).collect(java.util.stream.Collectors.toSet()));
             assertEquals(java.util.Set.of(3, 5), c.recomendacoes().stream().map(Conteudo::id).collect(java.util.stream.Collectors.toSet()));
             assertThrows(IllegalArgumentException.class, () -> c.conteudo(1));
-            assertThrows(IllegalArgumentException.class, () -> c.episodios(4));
+            assertThrows(IllegalArgumentException.class, () -> c.conteudo(4));
             assertThrows(IllegalArgumentException.class, () -> c.prepararReproducao(1, 0));
             c.criarPerfil("Doze", LocalDate.now().minusYears(12));
             c.selecionarPerfil(c.perfis().get(1).id());

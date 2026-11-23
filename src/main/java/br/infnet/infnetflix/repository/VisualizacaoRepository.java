@@ -5,19 +5,18 @@ import java.sql.*;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
-import java.util.function.Function;
-import java.util.stream.Collectors;
 
-public final class VisualizacaoRepository extends Repositorio {
+public final class VisualizacaoRepository {
+    private final Database db;
     private final CatalogoRepository catalogo;
 
     public VisualizacaoRepository(Database db) {
-        super(db);
+        this.db = db;
         catalogo = new CatalogoRepository(db);
     }
 
     public void salvar(int perfilId, Visualizacao visualizacao) throws SQLException {
-        executar("""
+        db.executar("""
                 INSERT INTO visualizacoes (perfil_id, conteudo_id, episodio_id, progresso)
                 VALUES (?, ?, ?, ?)
                 ON CONFLICT (perfil_id, conteudo_id, episodio_id) DO UPDATE
@@ -28,19 +27,24 @@ public final class VisualizacaoRepository extends Repositorio {
 
     public List<Visualizacao> historico(int perfilId) throws SQLException {
         List<Visualizacao> itens = new ArrayList<>();
-        Map<Integer, Conteudo> conteudos = catalogo.listar().stream()
-                .collect(Collectors.toMap(Conteudo::id, Function.identity()));
-        try (PreparedStatement p = preparar("""
+        Map<Integer, Conteudo> conteudosPorId = new HashMap<>();
+        for (Conteudo conteudo : catalogo.listar()) {
+            conteudosPorId.put(conteudo.id(), conteudo);
+        }
+
+        DateTimeFormatter formatoData = DateTimeFormatter.ofPattern("uuuu-MM-dd HH:mm:ss");
+        try (PreparedStatement p = db.preparar("""
                 SELECT rowid AS visualizacao_id, conteudo_id, episodio_id, progresso, atualizado_em
                 FROM visualizacoes WHERE perfil_id=? ORDER BY atualizado_em DESC, rowid DESC
                 """, perfilId);
                 ResultSet r = p.executeQuery()) {
             while (r.next()) {
-                Conteudo conteudo = conteudos.get(r.getInt("conteudo_id"));
-                itens.add(new Visualizacao(r.getInt("visualizacao_id"),
-                        conteudo.obterItem(r.getInt("episodio_id")), r.getInt("progresso"),
-                        LocalDateTime.parse(r.getString("atualizado_em"),
-                                DateTimeFormatter.ofPattern("uuuu-MM-dd HH:mm:ss"))));
+                Conteudo conteudo = conteudosPorId.get(r.getInt("conteudo_id"));
+                int id = r.getInt("visualizacao_id");
+                Reproduzivel item = conteudo.obterItem(r.getInt("episodio_id"));
+                int progresso = r.getInt("progresso");
+                LocalDateTime atualizadoEm = LocalDateTime.parse(r.getString("atualizado_em"), formatoData);
+                itens.add(new Visualizacao(id, item, progresso, atualizadoEm));
             }
         }
         return itens;

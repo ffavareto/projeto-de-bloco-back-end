@@ -69,7 +69,7 @@ class ConformidadeTest {
             assertTrue(c.adicionarFavorito(3));
             assertThrows(IllegalArgumentException.class, () -> c.editarFavorito(3, 2));
             assertEquals(List.of(3), ids(c.favoritos()));
-            c.registrarReproducao(c.prepararReproducao(3, 1), false, 150);
+            c.registrarReproducao(3, 1, false, 150);
             c.selecionarPerfil(titular);
             assertTrue(ids(c.favoritos()).containsAll(List.of(2, 4)));
             c.excluirPerfil(crianca);
@@ -87,9 +87,9 @@ class ConformidadeTest {
         try (Database db = new Database("jdbc:sqlite::memory:")) {
             InfnetflixController c = iniciar(db);
             List<Integer> semHistorico = ids(c.recomendacoes());
-            c.registrarReproducao(c.prepararReproducao(1, 0), false, 0);
+            c.registrarReproducao(1, 0, false, 0);
             assertEquals(semHistorico, ids(c.recomendacoes()));
-            c.registrarReproducao(c.prepararReproducao(2, 0), false, 100);
+            c.registrarReproducao(2, 0, false, 100);
             assertEquals(6, c.recomendacoes().get(0).id());
             assertFalse(ids(c.recomendacoes()).contains(2));
             c.criarPerfil("Outro adulto", LocalDate.of(1990, 1, 1));
@@ -102,18 +102,17 @@ class ConformidadeTest {
     }
 
     @Test
-    void dadosDaInterfaceNaoContornamPlanoOuIdade() throws Exception {
+    void registroDiretoDeReproducaoValidaPlanoIdadeESessao() throws Exception {
         try (Database db = new Database("jdbc:sqlite::memory:")) {
             InfnetflixController c = iniciar(db);
-            Reproducao falsa = new Reproducao(1, 0, 100000, 50000, true);
-            assertThrows(IllegalArgumentException.class, () -> c.registrarReproducao(falsa, false, 1201));
-            assertEquals(100, c.registrarReproducao(falsa, false, 100));
+            assertThrows(IllegalArgumentException.class, () -> c.registrarReproducao(1, 0, false, 1201));
+            assertEquals(100, c.registrarReproducao(1, 0, false, 100));
             c.criarPerfil("Criança", LocalDate.now().minusYears(8));
             c.selecionarPerfil(c.perfis().get(1).id());
-            assertThrows(IllegalArgumentException.class, () -> c.registrarReproducao(falsa, false, 100));
+            assertThrows(IllegalArgumentException.class, () -> c.registrarReproducao(1, 0, false, 100));
             c.sair();
             assertThrows(IllegalStateException.class, () -> c.editarFavorito(1, 2));
-            assertThrows(IllegalStateException.class, () -> c.registrarReproducao(falsa, false, 100));
+            assertThrows(IllegalStateException.class, () -> c.registrarReproducao(1, 0, false, 100));
         }
     }
 
@@ -128,8 +127,8 @@ class ConformidadeTest {
             c.adicionarFavorito(1);
             c.editarFavorito(1, 4);
             c.ativarPremium();
-            c.registrarReproducao(c.prepararReproducao(1, 0), false, 2500);
-            c.registrarReproducao(c.prepararReproducao(4, 5), false, 2300);
+            c.registrarReproducao(1, 0, false, 2500);
+            c.registrarReproducao(4, 5, false, 2300);
             Serie serie = (Serie) c.conteudo(4);
             generoId = serie.genero().id();
             temporadaId = serie.temporadas().get(1).id();

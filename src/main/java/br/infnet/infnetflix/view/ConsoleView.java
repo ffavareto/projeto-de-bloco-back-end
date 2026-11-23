@@ -1,7 +1,14 @@
 package br.infnet.infnetflix.view;
 
 import br.infnet.infnetflix.controller.InfnetflixController;
-import br.infnet.infnetflix.model.*;
+import br.infnet.infnetflix.model.Conteudo;
+import br.infnet.infnetflix.model.Episodio;
+import br.infnet.infnetflix.model.FiltroCatalogo;
+import br.infnet.infnetflix.model.Filme;
+import br.infnet.infnetflix.model.Perfil;
+import br.infnet.infnetflix.model.Reproducao;
+import br.infnet.infnetflix.model.Serie;
+import br.infnet.infnetflix.model.Visualizacao;
 
 import java.io.Console;
 import java.sql.SQLException;
@@ -9,11 +16,13 @@ import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.time.format.ResolverStyle;
-import java.util.*;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Scanner;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-/** Menus, entrada e apresentação; as regras ficam no controlador. */
+/** Mostra os menus e encaminha as escolhas do usuário ao controlador. */
 public final class ConsoleView {
     private static final Logger LOG = Logger.getLogger(ConsoleView.class.getName());
     private final InfnetflixController controller;
@@ -25,18 +34,17 @@ public final class ConsoleView {
     }
 
     private String ler(String prompt) {
+        String linha;
         if (console != null) {
-            String linha = console.readLine("%s", prompt);
-            if (linha == null) {
-                throw new FimEntrada();
-            }
-            return linha.trim();
+            linha = console.readLine("%s", prompt);
+        } else {
+            System.out.print(prompt);
+            linha = input.hasNextLine() ? input.nextLine() : null;
         }
-        System.out.print(prompt);
-        if (!input.hasNextLine()) {
+        if (linha == null) {
             throw new FimEntrada();
         }
-        return input.nextLine().trim();
+        return linha.trim();
     }
 
     private String senha() {
@@ -68,8 +76,10 @@ public final class ConsoleView {
 
     private LocalDate dataNascimento() {
         try {
-            return LocalDate.parse(ler("Data de nascimento (dd/MM/aaaa): "),
-                    DateTimeFormatter.ofPattern("dd/MM/uuuu").withResolverStyle(ResolverStyle.STRICT));
+            String data = ler("Data de nascimento (dd/MM/aaaa): ");
+            DateTimeFormatter formato = DateTimeFormatter.ofPattern("dd/MM/uuuu")
+                    .withResolverStyle(ResolverStyle.STRICT);
+            return LocalDate.parse(data, formato);
         } catch (DateTimeParseException e) {
             throw new IllegalArgumentException("Data de nascimento inválida. Use dd/MM/aaaa.");
         }
@@ -103,11 +113,17 @@ public final class ConsoleView {
         System.out.println("\n1. Cadastrar | 2. Entrar | 0. Sair");
         switch (ler("> ")) {
             case "1" -> {
-                controller.cadastrar(ler("Nome: "), ler("E-mail: "), senha(), dataNascimento());
+                String nome = ler("Nome: ");
+                String email = ler("E-mail: ");
+                String senha = senha();
+                LocalDate nascimento = dataNascimento();
+                controller.cadastrar(nome, email, senha, nascimento);
                 System.out.println("Conta criada com perfil inicial. Faça login para continuar.");
             }
             case "2" -> {
-                boolean entrou = controller.entrar(ler("E-mail: "), senha());
+                String email = ler("E-mail: ");
+                String senha = senha();
+                boolean entrou = controller.entrar(email, senha);
                 System.out.println(entrou ? "Login realizado." : "E-mail ou senha inválidos.");
             }
             case "0" -> throw new FimEntrada();
@@ -122,10 +138,8 @@ public final class ConsoleView {
     }
 
     private void menuConta() throws SQLException {
-        System.out.println(
-                "\n"
-                        + "1. Selecionar perfil | 2. Criar perfil | 3. Editar perfil | 4. Excluir"
-                        + " perfil | 5. Plano | 6. Sair da conta");
+        System.out.println("\n1. Selecionar perfil | 2. Criar perfil | 3. Editar perfil"
+                + " | 4. Excluir perfil | 5. Plano | 6. Sair da conta");
         switch (ler("> ")) {
             case "1" -> {
                 listarPerfis();
@@ -134,13 +148,16 @@ public final class ConsoleView {
             }
             case "2" -> {
                 controller.verificarDisponibilidadePerfil();
-                controller.criarPerfil(ler("Nome do perfil: "), dataNascimento());
+                String nome = ler("Nome do perfil: ");
+                LocalDate nascimento = dataNascimento();
+                controller.criarPerfil(nome, nascimento);
                 System.out.println("Perfil criado.");
             }
             case "3" -> {
                 listarPerfis();
                 int id = numero("ID do perfil: ");
-                controller.renomearPerfil(id, ler("Novo nome: "));
+                String nome = ler("Novo nome: ");
+                controller.renomearPerfil(id, nome);
                 System.out.println("Perfil atualizado.");
             }
             case "4" -> {
@@ -176,10 +193,8 @@ public final class ConsoleView {
     }
 
     private void menuPerfil() throws SQLException {
-        System.out.println(
-                "\n"
-                    + "1. Catálogo e busca | 2. Detalhes e reprodução | 3. Favoritos | 4. Histórico"
-                    + " | 5. Recomendações | 6. Gerenciar perfil");
+        System.out.println("\n1. Catálogo e busca | 2. Detalhes e reprodução | 3. Favoritos"
+                + " | 4. Histórico | 5. Recomendações | 6. Gerenciar perfil");
         switch (ler("> ")) {
             case "1" -> catalogo();
             case "2" -> detalhes();
@@ -208,7 +223,7 @@ public final class ConsoleView {
 
     private void catalogo() throws SQLException {
         String titulo = ler("Título (vazio para todos): ");
-        String tipo = ler("Tipo FILME/SERIE (vazio para todos): ").toUpperCase(Locale.ROOT);
+        String tipo = ler("Tipo FILME/SERIE (vazio para todos): ");
         String genero = ler("Gênero (vazio para todos): ");
         String classificacao = ler("Classificação (vazio para todas): ");
         FiltroCatalogo.Ordem ordem =
@@ -217,19 +232,21 @@ public final class ConsoleView {
                     case "2" -> FiltroCatalogo.Ordem.GENERO;
                     default -> throw new IllegalArgumentException("Ordenação inválida.");
                 };
-        mostrarConteudos(
-                controller.buscar(new FiltroCatalogo(titulo, tipo, genero, classificacao, ordem)));
+        FiltroCatalogo filtro = new FiltroCatalogo(titulo, tipo, genero, classificacao, ordem);
+        mostrarConteudos(controller.buscar(filtro));
     }
 
     private void detalhes() throws SQLException {
-        Conteudo c = controller.conteudo(numero("ID do conteúdo: "));
+        int id = numero("ID do conteúdo: ");
+        Conteudo conteudo = controller.conteudo(id);
         System.out.printf(
                 "%s | %s | %s | %s%n%s%n",
-                c.titulo(), c.tipo(), c.genero(), c.classificacao(), c.sinopse());
-        if (c instanceof Filme filme) {
+                conteudo.titulo(), conteudo.tipo(), conteudo.genero(),
+                conteudo.classificacao(), conteudo.sinopse());
+        if (conteudo instanceof Filme filme) {
             System.out.println("Duração: " + filme.duracao() + " segundos.");
-        } else {
-            for (Episodio episodio : controller.episodios(c.id())) {
+        } else if (conteudo instanceof Serie serie) {
+            for (Episodio episodio : serie.listarEpisodios()) {
                 System.out.printf(
                         "Episódio ID %d: T%d E%d - %s (%d s)%n",
                         episodio.id(),
@@ -242,74 +259,77 @@ public final class ConsoleView {
         System.out.println(
                 "1. Reproduzir | 2. Adicionar favorito | 3. Remover favorito | 0. Voltar");
         switch (ler("> ")) {
-            case "1" -> reproduzir(c);
-            case "2" ->
-                    System.out.println(
-                            controller.adicionarFavorito(c.id())
-                                    ? "Adicionado aos favoritos."
-                                    : "Já está nos favoritos.");
-            case "3" ->
-                    System.out.println(
-                            controller.removerFavorito(c.id())
-                                    ? "Removido dos favoritos."
-                                    : "Não estava nos favoritos.");
-            case "0" -> {}
+            case "1" -> reproduzir(conteudo);
+            case "2" -> {
+                boolean adicionado = controller.adicionarFavorito(conteudo.id());
+                System.out.println(adicionado ? "Adicionado aos favoritos." : "Já está nos favoritos.");
+            }
+            case "3" -> {
+                boolean removido = controller.removerFavorito(conteudo.id());
+                System.out.println(removido ? "Removido dos favoritos." : "Não estava nos favoritos.");
+            }
+            case "0" -> {
+                return;
+            }
             default -> System.out.println("Opção inválida.");
         }
     }
 
     private void reproduzir(Conteudo conteudo) throws SQLException {
-        int episodio = conteudo.tipo().equals("SERIE") ? numero("ID do episódio: ") : 0;
-        Reproducao r = controller.prepararReproducao(conteudo.id(), episodio);
+        int idEpisodio = 0;
+        if (conteudo instanceof Serie) {
+            idEpisodio = numero("ID do episódio: ");
+        }
+        Reproducao reproducao = controller.prepararReproducao(conteudo.id(), idEpisodio);
+        int progressoSalvo = reproducao.progresso();
+        int duracao = reproducao.duracao();
         boolean reiniciar = false;
-        if (r.progresso() > 0) {
-            System.out.printf("Progresso salvo: %d de %d segundos.%n", r.progresso(), r.duracao());
+        if (progressoSalvo > 0) {
+            System.out.printf("Progresso salvo: %d de %d segundos.%n", progressoSalvo, duracao);
             reiniciar = confirmar("Começar do início? (s/n): ");
         }
-        int inicio = reiniciar ? 0 : r.progresso();
-        if (!r.premium()) {
+        int inicio = reiniciar ? 0 : progressoSalvo;
+        if (!reproducao.premium()) {
             System.out.println(
                     "[Anúncio de demonstração] Plano gratuito: até 20 minutos por sessão.");
         }
         System.out.printf(
                 "Reprodução simulada no segundo %d; você pode avançar de 0 a %d segundos.%n",
-                inicio, r.limite(inicio));
-        int progresso =
-                controller.registrarReproducao(
-                        r, reiniciar, numero("Segundos assistidos até pausar: "));
+                inicio, reproducao.limite(inicio));
+        int segundosAssistidos = numero("Segundos assistidos até pausar: ");
+        int progresso = controller.registrarReproducao(
+                conteudo.id(), idEpisodio, reiniciar, segundosAssistidos);
         System.out.println(
-                progresso == r.duracao()
+                progresso == duracao
                         ? "Conteúdo concluído."
                         : "Reprodução pausada em " + progresso + " segundos.");
     }
 
     private void favoritos() throws SQLException {
         List<Conteudo> itens = controller.favoritos();
+        mostrarConteudos(itens);
         if (itens.isEmpty()) {
-            System.out.println("Nenhum conteúdo encontrado.");
             return;
         }
-        mostrarConteudos(itens);
         String escolha = ler("ID para remover, 'editar' para substituir um favorito ou Enter para voltar: ");
+        if (escolha.isEmpty()) {
+            return;
+        }
         if (escolha.equalsIgnoreCase("editar")) {
             int id = numero("ID do conteúdo favorito atual: ");
             int novoId = numero("ID do novo conteúdo: ");
-            System.out.println(controller.editarFavorito(id, novoId)
-                    ? "Favorito atualizado." : "Favorito não encontrado.");
+            boolean atualizado = controller.editarFavorito(id, novoId);
+            System.out.println(atualizado ? "Favorito atualizado." : "Favorito não encontrado.");
             return;
         }
-        if (!escolha.isEmpty()) {
-            int id;
-            try {
-                id = Integer.parseInt(escolha);
-            } catch (NumberFormatException e) {
-                throw new IllegalArgumentException("ID inválido.");
-            }
-            System.out.println(
-                    controller.removerFavorito(id)
-                            ? "Favorito removido."
-                            : "Favorito não encontrado.");
+        int id;
+        try {
+            id = Integer.parseInt(escolha);
+        } catch (NumberFormatException e) {
+            throw new IllegalArgumentException("ID inválido.");
         }
+        boolean removido = controller.removerFavorito(id);
+        System.out.println(removido ? "Favorito removido." : "Favorito não encontrado.");
     }
 
     private void historico() throws SQLException {
@@ -317,14 +337,15 @@ public final class ConsoleView {
         if (itens.isEmpty()) {
             System.out.println("Histórico vazio.");
         }
-        for (Visualizacao v : itens) {
-            String episodio =
-                    v.episodio() == null
-                            ? ""
-                            : " - T" + v.temporada() + " E" + v.numero() + " " + v.episodio();
+        for (Visualizacao visualizacao : itens) {
+            String episodio = "";
+            if (visualizacao.episodio() != null) {
+                episodio = " - T" + visualizacao.temporada() + " E" + visualizacao.numero()
+                        + " " + visualizacao.episodio();
+            }
             System.out.printf(
                     "%s%s - %d s (UTC: %s)%n",
-                    v.titulo(), episodio, v.progresso(), v.atualizadoEm());
+                    visualizacao.titulo(), episodio, visualizacao.progresso(), visualizacao.atualizadoEm());
         }
     }
 

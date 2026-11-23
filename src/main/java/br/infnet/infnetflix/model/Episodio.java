@@ -34,14 +34,12 @@ public final class Episodio implements Reproduzivel {
 
     @Override
     public Reproducao reproduzir(Perfil perfil) {
-        if (reproducao != null && !reproducao.pausada()) reproducao.pausar();
-        reproducao = Reproducao.iniciar(this, perfil);
+        reproducao = Reproducao.iniciar(this, perfil, reproducao);
         return reproducao;
     }
 
     @Override
     public void pausar() {
-        if (reproducao == null) throw new IllegalStateException("Inicie a reprodução primeiro.");
-        reproducao.pausar();
+        Reproducao.pausarAtual(reproducao);
     }
 }

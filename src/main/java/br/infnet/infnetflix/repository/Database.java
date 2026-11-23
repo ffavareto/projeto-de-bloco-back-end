@@ -2,12 +2,13 @@ package br.infnet.infnetflix.repository;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
+import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.sql.Statement;
 
 /** Inicialização do banco local e de um pequeno catálogo demonstrativo. */
 public final class Database implements AutoCloseable {
-    final Connection connection;
+    private final Connection connection;
 
     public Database(String url) throws SQLException {
         connection = DriverManager.getConnection(url);
@@ -147,6 +148,25 @@ public final class Database implements AutoCloseable {
 
     public Connection conexao() {
         return connection;
+    }
+
+    PreparedStatement preparar(String sql, Object... parametros) throws SQLException {
+        PreparedStatement consulta = connection.prepareStatement(sql);
+        try {
+            for (int i = 0; i < parametros.length; i++) {
+                consulta.setObject(i + 1, parametros[i]);
+            }
+            return consulta;
+        } catch (SQLException e) {
+            consulta.close();
+            throw e;
+        }
+    }
+
+    int executar(String sql, Object... parametros) throws SQLException {
+        try (PreparedStatement consulta = preparar(sql, parametros)) {
+            return consulta.executeUpdate();
+        }
     }
 
     @Override

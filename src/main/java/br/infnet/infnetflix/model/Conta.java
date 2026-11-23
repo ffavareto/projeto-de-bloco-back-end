@@ -2,7 +2,9 @@ package br.infnet.infnetflix.model;
 
 import br.infnet.infnetflix.security.Senhas;
 import java.time.LocalDate;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Objects;
 
 public final class Conta {
     private final int id;
@@ -13,8 +15,13 @@ public final class Conta {
     private final Plano plano;
 
     public Conta(int id, String nome, String email, String senhaHash, List<Perfil> perfis, Plano plano) {
-        if (perfis.isEmpty() || perfis.size() > 3 || perfis.stream().anyMatch(p -> p.contaId() != id)) {
+        if (perfis.isEmpty() || perfis.size() > 3) {
             throw new IllegalArgumentException("A conta deve possuir de um a três perfis próprios.");
+        }
+        for (Perfil perfil : perfis) {
+            if (perfil.contaId() != id) {
+                throw new IllegalArgumentException("A conta deve possuir de um a três perfis próprios.");
+            }
         }
         this.id = id;
         this.nome = Validacao.obrigatorio(nome, "Nome");
@@ -22,7 +29,9 @@ public final class Conta {
         this.senhaHash = Objects.requireNonNull(senhaHash);
         this.perfis = new ArrayList<>(perfis);
         this.plano = Objects.requireNonNull(plano);
-        this.perfis.forEach(p -> p.usarPlano(plano));
+        for (Perfil perfil : this.perfis) {
+            perfil.usarPlano(plano);
+        }
     }
 
     public int id() { return id; }
@@ -38,7 +47,6 @@ public final class Conta {
 
     public Perfil criarPerfil(String nome, LocalDate dataNascimento) {
         verificarDisponibilidadePerfil();
-        Validacao.dataNascimento(dataNascimento);
         // ID zero identifica um objeto novo, antes de receber a identidade do SQLite.
         Perfil perfil = new Perfil(0, id, nome, dataNascimento);
         perfil.usarPlano(plano);
@@ -46,25 +54,29 @@ public final class Conta {
         return perfil;
     }
 
-    public Perfil obterPerfil(int perfilId) {
-        return perfis.stream().filter(p -> p.id() == perfilId).findFirst()
-                .orElseThrow(() -> new IllegalArgumentException("Perfil não encontrado."));
-    }
-
     public Perfil selecionarPerfil(int perfilId) {
-        return obterPerfil(perfilId);
+        for (Perfil perfil : perfis) {
+            if (perfil.id() == perfilId) {
+                return perfil;
+            }
+        }
+        throw new IllegalArgumentException("Perfil não encontrado.");
     }
 
-    public void editarPerfil(int perfilId, String nome) { obterPerfil(perfilId).renomear(nome); }
+    public Perfil editarPerfil(int perfilId, String nome) {
+        Perfil perfil = selecionarPerfil(perfilId);
+        perfil.renomear(nome);
+        return perfil;
+    }
 
-    public void validarExclusaoPerfil(int perfilId) {
-        obterPerfil(perfilId);
+    public Perfil validarExclusaoPerfil(int perfilId) {
+        Perfil perfil = selecionarPerfil(perfilId);
         if (perfis.size() <= 1) throw new IllegalArgumentException("A conta precisa manter pelo menos um perfil.");
+        return perfil;
     }
 
     public void excluirPerfil(int perfilId) {
-        validarExclusaoPerfil(perfilId);
-        perfis.remove(obterPerfil(perfilId));
+        perfis.remove(validarExclusaoPerfil(perfilId));
     }
 
     public void assinarPremium() { plano.ativarPremium(); }

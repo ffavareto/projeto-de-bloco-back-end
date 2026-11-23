@@ -1,7 +1,10 @@
 package br.infnet.infnetflix.model;
 
 import java.text.Collator;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Locale;
 
 public final class Catalogo {
     private final List<Conteudo> itens;
@@ -34,21 +37,32 @@ public final class Catalogo {
         int idade = perfil.idade();
         Comparator<Conteudo> ordem = porTitulo();
         if (filtro.ordem() == FiltroCatalogo.Ordem.GENERO) {
-            Collator comparador = comparadorPortugues();
-            ordem = Comparator.comparing((Conteudo c) -> c.genero().nome(), comparador).thenComparing(ordem);
+            Comparator<Conteudo> porGenero = Comparator.comparing(
+                    conteudo -> conteudo.genero().nome(), comparadorPortugues());
+            ordem = porGenero.thenComparing(ordem);
         }
-        return itens.stream()
-                .filter(c -> idade >= c.idadeMinima())
-                .filter(c -> filtro.tipo().isEmpty() || c.tipo().equals(filtro.tipo()))
-                .filter(c -> Textos.contem(c.titulo(), filtro.titulo()))
-                .filter(c -> Textos.contem(c.genero().nome(), filtro.genero()))
-                .filter(c -> Textos.contem(c.classificacao(), filtro.classificacao()))
-                .sorted(ordem).toList();
+
+        List<Conteudo> encontrados = new ArrayList<>();
+        for (Conteudo conteudo : itens) {
+            if (idade >= conteudo.idadeMinima()
+                    && (filtro.tipo().isEmpty() || conteudo.tipo().equals(filtro.tipo()))
+                    && Textos.contem(conteudo.titulo(), filtro.titulo())
+                    && Textos.contem(conteudo.genero().nome(), filtro.genero())
+                    && Textos.contem(conteudo.classificacao(), filtro.classificacao())) {
+                encontrados.add(conteudo);
+            }
+        }
+        encontrados.sort(ordem);
+        return List.copyOf(encontrados);
     }
 
     public Conteudo obterDetalhes(int id, Perfil perfil) {
-        return itens.stream().filter(c -> c.id() == id && perfil.podeAssistir(c)).findFirst()
-                .orElseThrow(() -> new IllegalArgumentException("Conteúdo não encontrado."));
+        for (Conteudo conteudo : itens) {
+            if (conteudo.id() == id && perfil.podeAssistir(conteudo)) {
+                return conteudo;
+            }
+        }
+        throw new IllegalArgumentException("Conteúdo não encontrado.");
     }
 
     private static Collator comparadorPortugues() {

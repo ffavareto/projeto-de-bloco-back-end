@@ -13,22 +13,22 @@ public final class Senhas {
     public static String criar(String senha) {
         byte[] sal = new byte[16];
         new SecureRandom().nextBytes(sal);
-        return ITERACOES
-                + ":"
-                + Base64.getEncoder().encodeToString(sal)
-                + ":"
-                + Base64.getEncoder().encodeToString(derivar(senha, sal, ITERACOES));
+        Base64.Encoder codificador = Base64.getEncoder();
+        String salCodificado = codificador.encodeToString(sal);
+        byte[] hash = derivar(senha, sal, ITERACOES);
+        String hashCodificado = codificador.encodeToString(hash);
+        return ITERACOES + ":" + salCodificado + ":" + hashCodificado;
     }
 
     public static boolean verificar(String senha, String registro) {
         try {
             String[] partes = registro.split(":");
-            return MessageDigest.isEqual(
-                    Base64.getDecoder().decode(partes[2]),
-                    derivar(
-                            senha,
-                            Base64.getDecoder().decode(partes[1]),
-                            Integer.parseInt(partes[0])));
+            Base64.Decoder decodificador = Base64.getDecoder();
+            byte[] hashSalvo = decodificador.decode(partes[2]);
+            byte[] sal = decodificador.decode(partes[1]);
+            int iteracoes = Integer.parseInt(partes[0]);
+            byte[] hashDigitado = derivar(senha, sal, iteracoes);
+            return MessageDigest.isEqual(hashSalvo, hashDigitado);
         } catch (IllegalArgumentException | IndexOutOfBoundsException e) {
             return false;
         }
@@ -37,9 +37,8 @@ public final class Senhas {
     private static byte[] derivar(String senha, byte[] sal, int iteracoes) {
         PBEKeySpec spec = new PBEKeySpec(senha.toCharArray(), sal, iteracoes, 256);
         try {
-            return SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256")
-                    .generateSecret(spec)
-                    .getEncoded();
+            SecretKeyFactory fabrica = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256");
+            return fabrica.generateSecret(spec).getEncoded();
         } catch (java.security.GeneralSecurityException e) {
             throw new IllegalStateException(e);
         } finally {

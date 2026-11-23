@@ -1,12 +1,25 @@
 package br.infnet.infnetflix.controller;
 
-import br.infnet.infnetflix.model.*;
-import br.infnet.infnetflix.repository.*;
-import br.infnet.infnetflix.service.*;
+import br.infnet.infnetflix.model.Catalogo;
+import br.infnet.infnetflix.model.Conta;
+import br.infnet.infnetflix.model.Conteudo;
+import br.infnet.infnetflix.model.Favorito;
+import br.infnet.infnetflix.model.FiltroCatalogo;
+import br.infnet.infnetflix.model.Perfil;
+import br.infnet.infnetflix.model.Reproducao;
+import br.infnet.infnetflix.model.Reproduzivel;
+import br.infnet.infnetflix.model.Visualizacao;
+import br.infnet.infnetflix.repository.CatalogoRepository;
+import br.infnet.infnetflix.repository.ContaRepository;
+import br.infnet.infnetflix.repository.VisualizacaoRepository;
+import br.infnet.infnetflix.service.ServicoAutenticacao;
+import br.infnet.infnetflix.service.ServicoRecomendacao;
 
 import java.sql.SQLException;
 import java.time.LocalDate;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
 
 /** Coordena a sessão, os objetos de domínio e a persistência do console. */
 public final class InfnetflixController {
@@ -30,19 +43,35 @@ public final class InfnetflixController {
     public boolean perfilSelecionado() { return perfilId != 0; }
 
     private Conta contaAtual() throws SQLException {
-        if (!autenticado()) throw new IllegalStateException("Entre na conta primeiro.");
-        return contas.buscarPorId(contaId).orElseThrow(() -> new IllegalStateException("Conta não encontrada."));
+        if (!autenticado()) {
+            throw new IllegalStateException("Entre na conta primeiro.");
+        }
+        Optional<Conta> conta = contas.buscarPorId(contaId);
+        if (conta.isEmpty()) {
+            throw new IllegalStateException("Conta não encontrada.");
+        }
+        return conta.get();
     }
 
     private Perfil perfilAtual() throws SQLException {
         Conta conta = contaAtual();
-        if (!perfilSelecionado()) throw new IllegalStateException("Selecione um perfil primeiro.");
+        if (!perfilSelecionado()) {
+            throw new IllegalStateException("Selecione um perfil primeiro.");
+        }
         return conta.selecionarPerfil(perfilId);
     }
 
-    private Perfil perfilComDados() throws SQLException {
+    private Perfil perfilComFavoritos() throws SQLException {
         Perfil perfil = perfilAtual();
-        perfil.restaurarDados(catalogo.favoritos(perfilId), visualizacoes.historico(perfilId));
+        List<Favorito> favoritos = catalogo.favoritos(perfil.id());
+        perfil.restaurarFavoritos(favoritos);
+        return perfil;
+    }
+
+    private Perfil perfilComHistorico() throws SQLException {
+        Perfil perfil = perfilAtual();
+        List<Visualizacao> historico = visualizacoes.historico(perfil.id());
+        perfil.restaurarHistorico(historico);
         return perfil;
     }
 
@@ -53,12 +82,18 @@ public final class InfnetflixController {
     public boolean entrar(String email, String senha) throws SQLException {
         sair();
         Optional<Conta> conta = autenticacao.login(email, senha);
-        if (conta.isEmpty()) return false;
+        if (conta.isEmpty()) {
+            return false;
+        }
         contaId = conta.get().id();
         return true;
     }
 
-    public void sair() { contaId = 0; perfilId = 0; }
+    public void sair() {
+        contaId = 0;
+        perfilId = 0;
+    }
+
     public void trocarPerfil() { perfilId = 0; }
     public List<Perfil> perfis() throws SQLException { return contaAtual().perfis(); }
 
@@ -78,8 +113,9 @@ public final class InfnetflixController {
 
     public void renomearPerfil(int id, String nome) throws SQLException {
         Conta conta = contaAtual();
-        conta.editarPerfil(id, nome);
-        if (contas.renomearPerfil(contaId, id, conta.obterPerfil(id).nome()) == 0) {
+        Perfil perfil = conta.editarPerfil(id, nome);
+        int perfisRenomeados = contas.renomearPerfil(contaId, id, perfil.nome());
+        if (perfisRenomeados == 0) {
             throw new IllegalArgumentException("Perfil não encontrado.");
         }
     }
@@ -88,8 +124,13 @@ public final class InfnetflixController {
 
     public void excluirPerfil(int id) throws SQLException {
         contaAtual().excluirPerfil(id);
-        if (contas.excluirPerfil(contaId, id) == 0) throw new IllegalArgumentException("Perfil não encontrado.");
-        if (perfilId == id) perfilId = 0;
+        int perfisExcluidos = contas.excluirPerfil(contaId, id);
+        if (perfisExcluidos == 0) {
+            throw new IllegalArgumentException("Perfil não encontrado.");
+        }
+        if (perfilId == id) {
+            trocarPerfil();
+        }
     }
 
     public boolean premium() throws SQLException { return !contaAtual().plano().exibeAnuncios(); }
@@ -102,63 +143,82 @@ public final class InfnetflixController {
 
     public List<Conteudo> buscar(FiltroCatalogo filtro) throws SQLException {
         Perfil perfil = perfilAtual();
-        return catalogo.carregar().buscar(filtro, perfil);
+        Catalogo catalogoAtual = catalogo.carregar();
+        return catalogoAtual.buscar(filtro, perfil);
     }
 
     public Conteudo conteudo(int id) throws SQLException {
-        Perfil perfil = perfilAtual();
-        return catalogo.carregar().obterDetalhes(id, perfil);
+        return conteudoPermitido(id, perfilAtual());
     }
 
-    public List<Episodio> episodios(int conteudoId) throws SQLException {
-        Conteudo conteudo = conteudo(conteudoId);
-        return conteudo instanceof Serie serie ? serie.listarEpisodios() : List.of();
+    private Conteudo conteudoPermitido(int id, Perfil perfil) throws SQLException {
+        Optional<Conteudo> resultado = catalogo.buscarPorId(id);
+        if (resultado.isEmpty()) {
+            throw new IllegalArgumentException("Conteúdo não encontrado.");
+        }
+        Conteudo conteudo = resultado.get();
+        perfil.exigirConteudoPermitido(conteudo);
+        return conteudo;
     }
 
     public boolean adicionarFavorito(int id) throws SQLException {
-        Perfil perfil = perfilComDados();
-        Conteudo conteudo = catalogo.carregar().obterDetalhes(id, perfil);
-        return perfil.adicionarFavorito(conteudo) && catalogo.adicionarFavorito(perfilId, id);
+        Perfil perfil = perfilComFavoritos();
+        Conteudo conteudo = conteudoPermitido(id, perfil);
+        if (!perfil.adicionarFavorito(conteudo)) {
+            return false;
+        }
+        return catalogo.adicionarFavorito(perfilId, id);
     }
 
     public boolean removerFavorito(int id) throws SQLException {
-        Perfil perfil = perfilComDados();
-        return perfil.removerFavorito(id) && catalogo.removerFavorito(perfilId, id);
+        Perfil perfil = perfilComFavoritos();
+        if (!perfil.removerFavorito(id)) {
+            return false;
+        }
+        return catalogo.removerFavorito(perfilId, id);
     }
 
     public boolean editarFavorito(int id, int novoConteudoId) throws SQLException {
-        Perfil perfil = perfilComDados();
-        Conteudo novo = catalogo.carregar().obterDetalhes(novoConteudoId, perfil);
-        return perfil.editarFavorito(id, novo) && catalogo.editarFavorito(perfilId, id, novoConteudoId);
+        Perfil perfil = perfilComFavoritos();
+        Conteudo novo = conteudoPermitido(novoConteudoId, perfil);
+        if (!perfil.editarFavorito(id, novo)) {
+            return false;
+        }
+        return catalogo.editarFavorito(perfilId, id, novoConteudoId);
     }
 
     public List<Conteudo> favoritos() throws SQLException {
-        return perfilComDados().listarFavoritos().stream().map(Favorito::conteudo).toList();
+        Perfil perfil = perfilComFavoritos();
+        List<Conteudo> conteudos = new ArrayList<>();
+        for (Favorito favorito : perfil.listarFavoritos()) {
+            conteudos.add(favorito.conteudo());
+        }
+        return List.copyOf(conteudos);
     }
 
     public List<Conteudo> recomendacoes() throws SQLException {
-        Perfil perfil = perfilComDados();
+        Perfil perfil = perfilComHistorico();
         return recomendacao.recomendar(perfil, catalogo.carregar());
     }
 
-    public List<Visualizacao> historico() throws SQLException { return perfilComDados().listarHistorico(); }
+    public List<Visualizacao> historico() throws SQLException { return perfilComHistorico().listarHistorico(); }
 
     public Reproducao prepararReproducao(int conteudoId, int episodioId) throws SQLException {
-        Perfil perfil = perfilComDados();
-        Reproduzivel item = catalogo.carregar().obterDetalhes(conteudoId, perfil).obterItem(episodioId);
+        Perfil perfil = perfilComHistorico();
+        Conteudo conteudo = conteudoPermitido(conteudoId, perfil);
+        Reproduzivel item = conteudo.obterItem(episodioId);
         return item.reproduzir(perfil);
     }
 
-    public int registrarReproducao(Reproducao reproducao, boolean reiniciar, int avancar) throws SQLException {
-        // Recarrega perfil, plano e item para não confiar nos dados enviados pela interface.
-        Perfil perfil = perfilComDados();
-        Reproduzivel item = catalogo.carregar().obterDetalhes(reproducao.conteudoId(), perfil)
-                .obterItem(reproducao.episodioId());
-        Reproducao atual = item.reproduzir(perfil);
-        if (reiniciar) atual.reiniciar();
-        atual.avancar(avancar);
-        item.pausar();
-        visualizacoes.salvar(perfilId, perfil.obterVisualizacao(item));
-        return atual.progresso();
+    public int registrarReproducao(int conteudoId, int episodioId, boolean reiniciar, int segundos)
+            throws SQLException {
+        Reproducao reproducao = prepararReproducao(conteudoId, episodioId);
+        if (reiniciar) {
+            reproducao.reiniciar();
+        }
+        reproducao.avancar(segundos);
+        Visualizacao visualizacao = reproducao.pausar();
+        visualizacoes.salvar(perfilId, visualizacao);
+        return visualizacao.progresso();
     }
 }
