@@ -6,6 +6,7 @@ import java.sql.*;
 import java.time.LocalDate;
 import java.util.*;
 
+/** Persiste contas e perfis no SQLite e carrega o plano compartilhado pela conta. */
 public final class ContaRepository {
     private final Database db;
 
@@ -42,6 +43,7 @@ public final class ContaRepository {
         return new Conta(id, nome, email, senhaHash, perfisDaConta, plano);
     }
 
+    /** Cria a conta e seu primeiro perfil na mesma transação. */
     public void cadastrar(String nome, String email, String senhaHash, LocalDate dataNascimento) throws SQLException {
         Connection conexao = db.conexao();
         conexao.setAutoCommit(false);
@@ -83,6 +85,7 @@ public final class ContaRepository {
                 "UPDATE perfis SET nome=? WHERE id=? AND conta_id=?", nome, perfilId, contaId);
     }
 
+    /** Exclui o perfil da conta. O SQLite remove seus favoritos e visualizações em cascata. */
     public int excluirPerfil(int contaId, int perfilId) throws SQLException {
         return db.executar("DELETE FROM perfis WHERE id=? AND conta_id=?", perfilId, contaId);
     }

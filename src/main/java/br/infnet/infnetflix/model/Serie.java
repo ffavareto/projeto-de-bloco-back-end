@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 
+/** Título do catálogo que agrupa episódios em temporadas. */
 public final class Serie extends Conteudo {
     private final List<Temporada> temporadas = new ArrayList<>();
 
@@ -24,6 +25,7 @@ public final class Serie extends Conteudo {
         throw new IllegalArgumentException("Episódio não pertence a esta série.");
     }
 
+    /** Inclui uma temporada da própria série e mantém a ordem numérica das temporadas. */
     public void adicionarTemporada(Temporada temporada) {
         for (Temporada existente : temporadas) {
             if (existente.numero() == temporada.numero()) {
@@ -39,6 +41,7 @@ public final class Serie extends Conteudo {
         temporadas.sort(Comparator.comparingInt(Temporada::numero));
     }
 
+    /** Lista todos os episódios em ordem de temporada e número. */
     public List<Episodio> listarEpisodios() {
         List<Episodio> episodios = new ArrayList<>();
         for (Temporada temporada : temporadas) {

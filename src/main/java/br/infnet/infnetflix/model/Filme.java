@@ -1,5 +1,6 @@
 package br.infnet.infnetflix.model;
 
+/** Título do catálogo que é reproduzido como um único item. */
 public final class Filme extends Conteudo implements Reproduzivel {
     private final int duracao;
     private Reproducao reproducao;

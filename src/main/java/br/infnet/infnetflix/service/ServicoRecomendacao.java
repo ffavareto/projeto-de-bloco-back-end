@@ -14,7 +14,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+/** Sugere títulos do catálogo a partir do histórico do perfil. */
 public final class ServicoRecomendacao {
+    /**
+     * Retorna até dez títulos permitidos pela idade e ainda não iniciados.
+     * Prioriza os gêneros com mais visualizações de progresso positivo e desempata por título.
+     */
     public List<Conteudo> recomendar(Perfil perfil, Catalogo catalogo) {
         Map<String, Integer> afinidades = new HashMap<>();
         Set<Integer> iniciados = new HashSet<>();

@@ -42,6 +42,7 @@ public final class InfnetflixController {
     public boolean autenticado() { return contaId != 0; }
     public boolean perfilSelecionado() { return perfilId != 0; }
 
+    /** Recarrega do banco a conta associada à sessão ativa. */
     private Conta contaAtual() throws SQLException {
         if (!autenticado()) {
             throw new IllegalStateException("Entre na conta primeiro.");
@@ -79,6 +80,7 @@ public final class InfnetflixController {
         autenticacao.cadastrar(nome, email, senha, dataNascimento);
     }
 
+    /** Encerra a sessão anterior antes de validar as credenciais da nova conta. */
     public boolean entrar(String email, String senha) throws SQLException {
         sair();
         Optional<Conta> conta = autenticacao.login(email, senha);
@@ -94,6 +96,7 @@ public final class InfnetflixController {
         perfilId = 0;
     }
 
+    /** Limpa a seleção do perfil e mantém a conta autenticada. */
     public void trocarPerfil() { perfilId = 0; }
     public List<Perfil> perfis() throws SQLException { return contaAtual().perfis(); }
 
@@ -122,6 +125,7 @@ public final class InfnetflixController {
 
     public void validarExclusaoPerfil(int id) throws SQLException { contaAtual().validarExclusaoPerfil(id); }
 
+    /** Remove o perfil do banco e limpa a seleção caso ele esteja ativo. */
     public void excluirPerfil(int id) throws SQLException {
         contaAtual().excluirPerfil(id);
         int perfisExcluidos = contas.excluirPerfil(contaId, id);
@@ -151,6 +155,7 @@ public final class InfnetflixController {
         return conteudoPermitido(id, perfilAtual());
     }
 
+    /** Resolve o título no catálogo e aplica a restrição etária do perfil. */
     private Conteudo conteudoPermitido(int id, Perfil perfil) throws SQLException {
         Optional<Conteudo> resultado = catalogo.buscarPorId(id);
         if (resultado.isEmpty()) {
@@ -203,6 +208,7 @@ public final class InfnetflixController {
 
     public List<Visualizacao> historico() throws SQLException { return perfilComHistorico().listarHistorico(); }
 
+    /** Carrega o progresso salvo e abre a sessão simulada com o plano atual da conta. */
     public Reproducao prepararReproducao(int conteudoId, int episodioId) throws SQLException {
         Perfil perfil = perfilComHistorico();
         Conteudo conteudo = conteudoPermitido(conteudoId, perfil);
@@ -210,6 +216,7 @@ public final class InfnetflixController {
         return item.reproduzir(perfil);
     }
 
+    /** Revalida a sessão e o conteúdo, grava o avanço e retorna a nova posição em segundos. */
     public int registrarReproducao(int conteudoId, int episodioId, boolean reiniciar, int segundos)
             throws SQLException {
         Reproducao reproducao = prepararReproducao(conteudoId, episodioId);

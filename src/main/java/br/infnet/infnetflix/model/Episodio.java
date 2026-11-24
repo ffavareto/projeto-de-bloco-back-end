@@ -2,6 +2,7 @@ package br.infnet.infnetflix.model;
 
 import java.util.Objects;
 
+/** Unidade reproduzível de uma série, numerada dentro de uma temporada. */
 public final class Episodio implements Reproduzivel {
     private final int id;
     private final Serie serie;

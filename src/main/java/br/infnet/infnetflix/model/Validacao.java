@@ -2,9 +2,11 @@ package br.infnet.infnetflix.model;
 
 import java.time.LocalDate;
 
+/** Valida campos compartilhados pelo cadastro de contas e perfis. */
 public final class Validacao {
     private Validacao() {}
 
+    /** Exige um valor preenchido e retorna o texto sem espaços nas extremidades. */
     public static String obrigatorio(String valor, String campo) {
         if (valor == null || valor.isBlank()) {
             throw new IllegalArgumentException(campo + " não pode ficar vazio.");

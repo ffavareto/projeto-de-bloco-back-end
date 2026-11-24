@@ -7,6 +7,7 @@ import java.util.Locale;
 public final class Textos {
     private Textos() {}
 
+    /** Converte o texto para minúsculas e remove as marcas de acentuação Unicode. */
     public static String normalizar(String texto) {
         String decomposto = Normalizer.normalize(texto, Normalizer.Form.NFD);
         String semAcentos = decomposto.replaceAll("\\p{M}+", "");

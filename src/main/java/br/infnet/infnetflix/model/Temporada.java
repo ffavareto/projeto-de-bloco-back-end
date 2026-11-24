@@ -6,6 +6,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+/** Agrupa episódios da mesma temporada em ordem numérica e com números únicos. */
 public record Temporada(int id, int numero, List<Episodio> episodios) {
     public Temporada {
         if (numero <= 0 || episodios.isEmpty()) {

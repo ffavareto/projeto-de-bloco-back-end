@@ -47,6 +47,7 @@ public final class ConsoleView {
         return linha.trim();
     }
 
+    /** Oculta a digitação no terminal interativo e aceita entrada redirecionada. */
     private String senha() {
         if (console == null) {
             return ler("Senha: ");
@@ -85,6 +86,7 @@ public final class ConsoleView {
         }
     }
 
+    /** Exibe o menu correspondente à sessão até a opção de sair ou o fim da entrada. */
     public void iniciar() {
         System.out.println("=== INFNETFLIX ===");
         try {
@@ -275,6 +277,7 @@ public final class ConsoleView {
         }
     }
 
+    /** Apresenta as opções de retomada e coleta o tempo assistido na reprodução simulada. */
     private void reproduzir(Conteudo conteudo) throws SQLException {
         int idEpisodio = 0;
         if (conteudo instanceof Serie) {
@@ -355,5 +358,6 @@ public final class ConsoleView {
         mostrarConteudos(controller.recomendacoes());
     }
 
+    /** Sinaliza a saída solicitada no menu ou o fim da entrada de dados. */
     private static final class FimEntrada extends RuntimeException {}
 }

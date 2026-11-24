@@ -10,6 +10,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
 
+/** Perfil de espectador com data de nascimento, favoritos e histórico próprios. */
 public final class Perfil {
     private final int id;
     private final int contaId;
@@ -42,6 +43,7 @@ public final class Perfil {
 
     public boolean podeAssistir(Conteudo conteudo) { return idade() >= conteudo.idadeMinima(); }
 
+    /** Rejeita a operação quando o perfil está abaixo da idade mínima do título. */
     public void exigirConteudoPermitido(Conteudo conteudo) {
         if (!podeAssistir(conteudo)) throw new IllegalArgumentException("Conteúdo não encontrado.");
     }
@@ -56,6 +58,7 @@ public final class Perfil {
         this.historico.addAll(historico);
     }
 
+    /** Adiciona um título permitido e retorna falso quando ele já está na lista. */
     public boolean adicionarFavorito(Conteudo conteudo) {
         exigirConteudoPermitido(conteudo);
         if (indiceFavorito(conteudo.id()) >= 0) {
@@ -93,6 +96,7 @@ public final class Perfil {
         return -1;
     }
 
+    /** Retorna os favoritos compatíveis com a idade atual do perfil. */
     public List<Favorito> listarFavoritos() {
         List<Favorito> permitidos = new ArrayList<>();
         for (Favorito favorito : favoritos) {
@@ -103,6 +107,7 @@ public final class Perfil {
         return List.copyOf(permitidos);
     }
 
+    /** Recupera a visualização do filme ou episódio, ou retorna {@code null} se ainda não houver registro. */
     public Visualizacao obterVisualizacao(Reproduzivel item) {
         for (Visualizacao visualizacao : historico) {
             if (visualizacao.correspondeA(item)) {
@@ -112,6 +117,7 @@ public final class Perfil {
         return null;
     }
 
+    /** Cria ou atualiza o progresso do item no histórico em memória. */
     public Visualizacao registrarVisualizacao(Reproduzivel item, int progressoSegundos) {
         exigirConteudoPermitido(item.conteudo());
         Visualizacao visualizacao = obterVisualizacao(item);
@@ -124,6 +130,7 @@ public final class Perfil {
         return visualizacao;
     }
 
+    /** Retorna o histórico do acesso mais recente ao mais antigo. */
     public List<Visualizacao> listarHistorico() {
         List<Visualizacao> ordenado = new ArrayList<>(historico);
         ordenado.sort(Comparator.comparing(Visualizacao::dataUltimoAcesso).reversed());

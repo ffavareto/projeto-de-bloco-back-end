@@ -1,5 +1,6 @@
 package br.infnet.infnetflix.model;
 
+/** Critérios opcionais de busca, com ordenação por título como padrão. */
 public record FiltroCatalogo(
         String titulo, String tipo, String genero, String classificacao, Ordem ordem) {
     public FiltroCatalogo {
@@ -13,6 +14,7 @@ public record FiltroCatalogo(
         }
     }
 
+    /** Critério principal de ordenação dos resultados. */
     public enum Ordem {
         TITULO,
         GENERO

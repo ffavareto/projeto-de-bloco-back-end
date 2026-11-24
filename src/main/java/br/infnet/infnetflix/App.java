@@ -16,6 +16,7 @@ public final class App {
 
     private App() {}
 
+    /** Inicia o console. O primeiro argumento pode indicar o caminho do banco SQLite. */
     public static void main(String[] args) {
         String arquivo = args.length > 0 ? args[0] : "infnetflix.db";
         try (Database db = new Database("jdbc:sqlite:" + arquivo)) {

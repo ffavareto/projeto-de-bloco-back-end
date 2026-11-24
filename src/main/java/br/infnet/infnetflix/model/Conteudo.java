@@ -2,6 +2,7 @@ package br.infnet.infnetflix.model;
 
 import java.util.Objects;
 
+/** Reúne os metadados do catálogo que são comuns a filmes e séries. */
 public abstract class Conteudo {
     private final int id;
     private final String titulo;
@@ -23,8 +24,11 @@ public abstract class Conteudo {
     public String classificacao() { return classificacao; }
     public String sinopse() { return sinopse; }
     public abstract String tipo();
+
+    /** Localiza o episódio da série pelo ID. Para filmes, o ID zero seleciona o próprio filme. */
     public abstract Reproduzivel obterItem(int episodioId);
 
+    /** Converte a classificação em idade mínima e bloqueia classificações desconhecidas. */
     public int idadeMinima() {
         return switch (Textos.normalizar(classificacao)) {
             case "livre" -> 0;

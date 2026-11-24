@@ -6,6 +6,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
 
+/** Consulta e ordena os títulos disponíveis para a idade do perfil. */
 public final class Catalogo {
     private final List<Conteudo> itens;
 
@@ -33,6 +34,7 @@ public final class Catalogo {
         return buscar(new FiltroCatalogo("", "", "", "", ordem), perfil);
     }
 
+    /** Combina os filtros preenchidos e usa o título como desempate na ordenação por gênero. */
     public List<Conteudo> buscar(FiltroCatalogo filtro, Perfil perfil) {
         int idade = perfil.idade();
         Comparator<Conteudo> ordem = porTitulo();
@@ -56,6 +58,7 @@ public final class Catalogo {
         return List.copyOf(encontrados);
     }
 
+    /** Busca pelo ID entre os títulos que o perfil pode assistir. */
     public Conteudo obterDetalhes(int id, Perfil perfil) {
         for (Conteudo conteudo : itens) {
             if (conteudo.id() == id && perfil.podeAssistir(conteudo)) {
@@ -71,6 +74,7 @@ public final class Catalogo {
         return comparador;
     }
 
+    /** Ordena títulos pelas regras do português brasileiro e desempata pelo ID. */
     public static Comparator<Conteudo> porTitulo() {
         return Comparator.comparing(Conteudo::titulo, comparadorPortugues()).thenComparingInt(Conteudo::id);
     }

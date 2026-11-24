@@ -7,9 +7,11 @@ import java.util.Base64;
 import javax.crypto.SecretKeyFactory;
 import javax.crypto.spec.PBEKeySpec;
 
+/** Gera e verifica hashes de senha com PBKDF2-HMAC-SHA256. */
 public final class Senhas {
     private static final int ITERACOES = 210_000;
 
+    /** Gera um sal aleatório e retorna o registro no formato {@code iteracoes:sal:hash}. */
     public static String criar(String senha) {
         byte[] sal = new byte[16];
         new SecureRandom().nextBytes(sal);
@@ -20,6 +22,7 @@ public final class Senhas {
         return ITERACOES + ":" + salCodificado + ":" + hashCodificado;
     }
 
+    /** Recalcula o hash com os parâmetros salvos e o compara com o hash do registro. */
     public static boolean verificar(String senha, String registro) {
         try {
             String[] partes = registro.split(":");

@@ -5,6 +5,7 @@ import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.util.Objects;
 
+/** Guarda a posição em segundos e o horário em UTC do último acesso a um filme ou episódio. */
 public final class Visualizacao {
     private final int id;
     private final Reproduzivel item;
@@ -25,12 +26,14 @@ public final class Visualizacao {
         }
     }
 
+    /** Atualiza a posição absoluta dentro da duração do item e registra o horário do acesso. */
     public void atualizarProgresso(int segundos) {
         validarProgresso(segundos);
         progresso = segundos;
         dataUltimoAcesso = LocalDateTime.now(ZoneOffset.UTC);
     }
 
+    /** Identifica o mesmo item pela combinação do ID do título e do ID do episódio. */
     public boolean correspondeA(Reproduzivel outro) {
         return item.conteudo().id() == outro.conteudo().id() && item.episodioId() == outro.episodioId();
     }

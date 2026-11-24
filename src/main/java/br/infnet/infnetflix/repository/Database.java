@@ -150,6 +150,7 @@ public final class Database implements AutoCloseable {
         return connection;
     }
 
+    /** Vincula os parâmetros do comando JDBC. Quem chama o método deve fechar o comando retornado. */
     PreparedStatement preparar(String sql, Object... parametros) throws SQLException {
         PreparedStatement consulta = connection.prepareStatement(sql);
         try {
@@ -163,6 +164,7 @@ public final class Database implements AutoCloseable {
         }
     }
 
+    /** Executa uma alteração parametrizada e retorna o número de linhas afetadas. */
     int executar(String sql, Object... parametros) throws SQLException {
         try (PreparedStatement consulta = preparar(sql, parametros)) {
             return consulta.executeUpdate();

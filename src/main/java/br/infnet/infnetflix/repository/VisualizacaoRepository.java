@@ -6,6 +6,7 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 
+/** Persiste e recupera o progresso de filmes e episódios por perfil. */
 public final class VisualizacaoRepository {
     private final Database db;
     private final CatalogoRepository catalogo;
@@ -15,6 +16,7 @@ public final class VisualizacaoRepository {
         catalogo = new CatalogoRepository(db);
     }
 
+    /** Insere ou atualiza o registro de progresso do mesmo item para o perfil. */
     public void salvar(int perfilId, Visualizacao visualizacao) throws SQLException {
         db.executar("""
                 INSERT INTO visualizacoes (perfil_id, conteudo_id, episodio_id, progresso)
@@ -25,6 +27,7 @@ public final class VisualizacaoRepository {
                 visualizacao.item().episodioId(), visualizacao.progresso());
     }
 
+    /** Reconstrói as visualizações a partir dos filmes e episódios do catálogo. */
     public List<Visualizacao> historico(int perfilId) throws SQLException {
         List<Visualizacao> itens = new ArrayList<>();
         Map<Integer, Conteudo> conteudosPorId = new HashMap<>();

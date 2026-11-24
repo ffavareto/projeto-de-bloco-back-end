@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
+/** Conta de acesso com um plano compartilhado por um a três perfis próprios. */
 public final class Conta {
     private final int id;
     private final String nome;
@@ -45,6 +46,7 @@ public final class Conta {
         if (perfis.size() >= 3) throw new IllegalArgumentException("A conta já possui três perfis.");
     }
 
+    /** Cria um perfil com o plano da conta, respeitando o limite de três perfis. */
     public Perfil criarPerfil(String nome, LocalDate dataNascimento) {
         verificarDisponibilidadePerfil();
         // ID zero identifica um objeto novo, antes de receber a identidade do SQLite.
@@ -69,6 +71,7 @@ public final class Conta {
         return perfil;
     }
 
+    /** Confirma que o perfil pertence à conta e que outro perfil permanecerá após a exclusão. */
     public Perfil validarExclusaoPerfil(int perfilId) {
         Perfil perfil = selecionarPerfil(perfilId);
         if (perfis.size() <= 1) throw new IllegalArgumentException("A conta precisa manter pelo menos um perfil.");

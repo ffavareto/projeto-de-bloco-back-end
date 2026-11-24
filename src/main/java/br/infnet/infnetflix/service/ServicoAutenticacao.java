@@ -9,11 +9,13 @@ import java.time.LocalDate;
 import java.util.Locale;
 import java.util.Optional;
 
+/** Centraliza as regras de cadastro e autenticação por e-mail e senha. */
 public final class ServicoAutenticacao {
     private final ContaRepository contas;
 
     public ServicoAutenticacao(ContaRepository contas) { this.contas = contas; }
 
+    /** Valida os dados e envia o hash da senha ao repositório para criar a conta. */
     public Conta cadastrar(String nome, String email, String senha, LocalDate dataNascimento) throws SQLException {
         nome = Validacao.obrigatorio(nome, "Nome");
         email = Validacao.obrigatorio(email, "E-mail").toLowerCase(Locale.ROOT);
@@ -32,6 +34,7 @@ public final class ServicoAutenticacao {
         return contas.buscarPorEmail(email).orElseThrow();
     }
 
+    /** Normaliza o e-mail e retorna a conta apenas quando a senha confere. */
     public Optional<Conta> login(String email, String senha) throws SQLException {
         email = Validacao.obrigatorio(email, "E-mail").toLowerCase(Locale.ROOT);
         Optional<Conta> resultado = contas.buscarPorEmail(email);

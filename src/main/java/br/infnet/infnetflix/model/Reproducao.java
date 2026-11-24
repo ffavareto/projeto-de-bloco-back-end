@@ -20,6 +20,7 @@ public final class Reproducao {
         this.progresso = anterior == null ? 0 : anterior.progresso();
     }
 
+    /** Pausa a sessão anterior, se ativa, e abre outra com o progresso registrado pelo perfil. */
     static Reproducao iniciar(Reproduzivel item, Perfil perfil, Reproducao atual) {
         if (atual != null && !atual.pausada) {
             atual.pausar();
@@ -38,6 +39,7 @@ public final class Reproducao {
     public int progresso() { return progresso; }
     public boolean premium() { return premium; }
 
+    /** Calcula quantos segundos podem ser assistidos a partir da posição informada. */
     public int limite(int inicio) {
         int segundosAteOFim = duracao() - inicio;
         return Math.min(segundosAteOFim, segundosRestantes);
@@ -49,11 +51,13 @@ public final class Reproducao {
         }
     }
 
+    /** Volta ao início e mantém o saldo de tempo da sessão. */
     public void reiniciar() {
         exigirAtiva();
         progresso = 0;
     }
 
+    /** Avança dentro da duração do item e consome o saldo da sessão no plano gratuito. */
     public void avancar(int segundos) {
         exigirAtiva();
         if (segundos < 0 || segundos > limite(progresso)) {
@@ -65,6 +69,7 @@ public final class Reproducao {
         }
     }
 
+    /** Encerra a sessão e registra a posição atual no histórico em memória do perfil. */
     public Visualizacao pausar() {
         exigirAtiva();
         Visualizacao visualizacao = perfil.registrarVisualizacao(item, progresso);

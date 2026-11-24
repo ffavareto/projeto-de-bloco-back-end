@@ -5,6 +5,7 @@ import java.sql.*;
 import java.time.LocalDate;
 import java.util.*;
 
+/** Carrega filmes e séries do SQLite e persiste os favoritos de cada perfil. */
 public final class CatalogoRepository {
     private static final String CONTEUDOS = """
             SELECT c.*, g.id AS genero_id
@@ -57,6 +58,7 @@ public final class CatalogoRepository {
         }
     }
 
+    /** Agrupa os episódios pelo ID de temporada persistido no banco. */
     private void carregarTemporadas(Serie serie) throws SQLException {
         Map<Integer, List<Episodio>> episodiosPorTemporada = new LinkedHashMap<>();
         try (PreparedStatement p = db.preparar("""
@@ -87,6 +89,7 @@ public final class CatalogoRepository {
         }
     }
 
+    /** Carrega os favoritos do perfil em ordem decrescente de inclusão. */
     public List<Favorito> favoritos(int perfilId) throws SQLException {
         List<Favorito> favoritos = new ArrayList<>();
         try (PreparedStatement p = db.preparar("""
@@ -115,6 +118,7 @@ public final class CatalogoRepository {
         return db.executar("DELETE FROM favoritos WHERE perfil_id=? AND conteudo_id=?", perfilId, conteudoId) > 0;
     }
 
+    /** Troca o título na mesma linha para preservar a identidade e a data de inclusão. */
     public boolean editarFavorito(int perfilId, int conteudoId, int novoConteudoId) throws SQLException {
         return db.executar("UPDATE favoritos SET conteudo_id=? WHERE perfil_id=? AND conteudo_id=?",
                 novoConteudoId, perfilId, conteudoId) > 0;
