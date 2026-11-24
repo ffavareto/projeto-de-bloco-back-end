@@ -21,7 +21,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
-/** Coordena a sessão, os objetos de domínio e a persistência do console. */
+/** Coordena as operações de domínio e persistência de uma sessão do INFNETFLIX. */
 public final class InfnetflixController {
     private final ContaRepository contas;
     private final CatalogoRepository catalogo;
@@ -33,10 +33,17 @@ public final class InfnetflixController {
 
     public InfnetflixController(ContaRepository contas, CatalogoRepository catalogo,
             VisualizacaoRepository visualizacoes) {
+        this(contas, catalogo, visualizacoes, 0);
+    }
+
+    /** Cria o contexto de uma requisição já autenticada pela API. */
+    public InfnetflixController(ContaRepository contas, CatalogoRepository catalogo,
+            VisualizacaoRepository visualizacoes, int contaId) {
         this.contas = contas;
         this.catalogo = catalogo;
         this.visualizacoes = visualizacoes;
         this.autenticacao = new ServicoAutenticacao(contas);
+        this.contaId = contaId;
     }
 
     public boolean autenticado() { return contaId != 0; }
@@ -100,8 +107,12 @@ public final class InfnetflixController {
     public void trocarPerfil() { perfilId = 0; }
     public List<Perfil> perfis() throws SQLException { return contaAtual().perfis(); }
 
+    public Perfil perfil(int id) throws SQLException {
+        return contaAtual().selecionarPerfil(id);
+    }
+
     public void selecionarPerfil(int id) throws SQLException {
-        contaAtual().selecionarPerfil(id);
+        perfil(id);
         perfilId = id;
     }
 

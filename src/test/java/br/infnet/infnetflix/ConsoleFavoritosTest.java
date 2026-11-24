@@ -1,5 +1,7 @@
 package br.infnet.infnetflix;
 
+import br.infnet.infnetflix.api.ServidorRest;
+import br.infnet.infnetflix.repository.Database;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import java.io.*;
@@ -20,10 +22,12 @@ class ConsoleFavoritosTest {
         InputStream entrada = System.in;
         PrintStream saida = System.out;
         ByteArrayOutputStream captura = new ByteArrayOutputStream();
-        try {
+        try (Database db = new Database("jdbc:sqlite:" + arquivo);
+                ServidorRest api = new ServidorRest(db, 0)) {
+            api.iniciar();
             System.setIn(new ByteArrayInputStream(comandos.getBytes(StandardCharsets.UTF_8)));
             System.setOut(new PrintStream(captura, true, StandardCharsets.UTF_8));
-            App.main(new String[] {arquivo.toString()});
+            App.main(new String[] {Integer.toString(api.porta())});
         } finally {
             System.setIn(entrada);
             System.setOut(saida);

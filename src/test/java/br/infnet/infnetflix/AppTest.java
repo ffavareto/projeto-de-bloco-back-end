@@ -2,6 +2,7 @@ package br.infnet.infnetflix;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+import br.infnet.infnetflix.api.ServidorRest;
 import br.infnet.infnetflix.repository.Database;
 import br.infnet.infnetflix.security.Senhas;
 
@@ -67,10 +68,12 @@ class AppTest {
         InputStream anterior = System.in;
         PrintStream saida = System.out;
         ByteArrayOutputStream captura = new ByteArrayOutputStream();
-        try {
+        try (Database db = new Database("jdbc:sqlite:" + arquivo);
+                ServidorRest api = new ServidorRest(db, 0)) {
+            api.iniciar();
             System.setIn(new ByteArrayInputStream(comandos.getBytes(StandardCharsets.UTF_8)));
             System.setOut(new PrintStream(captura, true, StandardCharsets.UTF_8));
-            App.main(new String[] {arquivo.toString()});
+            App.main(new String[] {Integer.toString(api.porta())});
         } finally {
             System.setIn(anterior);
             System.setOut(saida);
